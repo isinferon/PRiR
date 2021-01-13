@@ -1,0 +1,45 @@
+#include <stdio.h>
+#include "mpi.h"
+
+int main(int argc, char **argv){
+	int calka(int x){
+		return x * x;
+	}
+
+	int p_numer;			// numer procesu
+	int n, p;
+	int tag = 10;
+	double suma = 0, trapez, roznica, dokladnosc = 6;
+	double a = 5, b = 10;		// przedzial
+	
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &p_numer);
+	MPI_Comm_size(MPI_COMM_WORLD, &n);
+	MPI_Status status;
+	roznica = (b - a) / n;
+
+	if(p_numer == n - 1){
+		trapez = calka(a + (p_numer * roznica) + 1);
+		printf("Proces: %d, pole mojego trapezu: %f\n", p_numer, trapez);
+		suma += trapez;
+		MPI_Send(&suma, 1, MPI_DOUBLE, p_numer - 1, tag, MPI_COMM_WORLD);
+	}
+	if((p_numer >= 0) && (p_numer < n - 1)){
+		MPI_Recv(&suma, 1, MPI_DOUBLE, p_numer + 1, tag, MPI_COMM_WORLD, &status);
+		trapez = calka(a + ((p_numer + 1) * roznica));
+		printf("Proces: %d, pole mojego trapezu: %f\n", p_numer, trapez);
+		suma += trapez;
+		if(p_numer != 0){
+			MPI_Send(&suma, 1, MPI_DOUBLE, p_numer - 1, tag, MPI_COMM_WORLD);
+		} else {
+			suma += (calka(a) + calka(b)) / 2;
+			//suma *= roznica;
+			//printf("calka(a) = %d, calka(b) = %d\n", calka(a), calka(b));
+			printf("Wartosc calki w przyblizeniu %f\n", suma);
+		}
+	}
+	//printf("Roznica %f\n", roznica);
+	//printf("TEST PROCESU %d, xp = %f, xk = %f\n", p_numer, xp, xk);
+	MPI_Finalize();
+	return 0;
+}
